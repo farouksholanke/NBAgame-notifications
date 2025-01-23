@@ -1,146 +1,170 @@
-# NBA Game Day Notifications / Sports Alerts System
 
-## **Project Overview**
-This project is an alert system that sends real-time NBA game day score notifications to subscribed users via SMS/Email. It leverages **Amazon SNS**, **AWS Lambda and Python**, **Amazon EvenBridge** and **NBA APIs** to provide sports fans with up-to-date game information. The project demonstrates cloud computing principles and efficient notification mechanisms.
+# NBA GAME DAY NOTIFICATION AWS PROJECT
 
----
+In this project, I created an NBA  game notification system. It was an event-driven system capable of sending SMS notifications or emails about NBA games (based on game status: Final, InProgress, or Scheduled) every 2 hours from 9 AM to 2 AM. I will be leveraging Amazon SNS, AWS Lambda and Python, Amazon EvenBridge and NBA APIs to provide sports fans with up-to-date game information. The project demonstrates cloud computing principles and efficient notification mechanisms.
+![Image](https://github.com/user-attachments/assets/f73b5475-a17f-4e7c-a888-48696b9938cc)
 
-## **Features**
+
+##  **Features**
 - Fetches live NBA game scores using an external API.
 - Sends formatted score updates to subscribers via SMS/Email using Amazon SNS.
 - Scheduled automation for regular updates using Amazon EventBridge.
 - Designed with security in mind, following the principle of least privilege for IAM roles.
+## **Project Implementation**
+I wrote a Lambda function to interact with the SportsDataIO API, which returned NBA game data as a JSON object. This data was then converted into a human-readable format, published to an Amazon SNS topic, and all phone numbers or emails subscribed to the SNS topic were notified with the NBA game data. This process occurred in intervals, as an Amazon EventBridge scheduled rule triggered the Lambda function to initiate the process every 2 hours between 9am and 2 am 
 
-## **Prerequisites**
-- Free account with subscription and API Key at [sportsdata.io](https://sportsdata.io/)
-- Personal AWS account with basic understanding of AWS and Python
-
----
-
-## **Technical Architecture**
-![nba_API](https://github.com/user-attachments/assets/5e19635e-0685-4c07-9601-330f7d1231f9)
+Firstly, I created an SNS topic and subscribed my email address to the topic
+![Image](https://github.com/user-attachments/assets/327f7367-9cc3-46ec-bcb0-863446a09d68)
+![Image](https://github.com/user-attachments/assets/e5b0e758-ec03-42fb-8965-d6922d6df1f5)
 
 
----
 
+After confirming my subscription, I created an IAM policy to allow publishing to my SNS topic 
+![Image](https://github.com/user-attachments/assets/e17895c6-d939-4a7c-acb1-f73617cb2253)
 
-## **Technologies**
-- **Cloud Provider**: AWS
-- **Core Services**: SNS, Lambda, EventBridge
-- **External API**: NBA Game API (SportsData.io)
-- **Programming Language**: Python 3.x
-- **IAM Security**:
-  - Least privilege policies for Lambda, SNS, and EventBridge.
-
----
-
-## **Project Structure**
-```bash
-game-day-notifications/
-├── src/
-│   ├── gd_notifications.py          # Main Lambda function code
-├── policies/
-│   ├── gb_sns_policy.json           # SNS publishing permissions
-│   ├── gd_eventbridge_policy.json   # EventBridge to Lambda permissions
-│   └── gd_lambda_policy.json        # Lambda execution role permissions
-├── .gitignore
-└── README.md                        # Project documentation
+IAM POLICY:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "sns:Publish",
+            "Resource": "arn:aws:sns:REGION:ACCOUNT_ID:gd_topic"
+        }
+    ]
+}
 ```
 
-## **Setup Instructions**
+Then, I created a Lambda role and attached the SNS topic and Lambda basic execution policy that allowed the creation of log groups and log streams, as well as the writing of log events to any resource in AWS CloudWatch Logs.
 
-### **Clone the Repository**
-```bash
-git clone https://github.com/ifeanyiro9/game-day-notifications.git
-cd game-day-notifications
+LAMBDA BASIC EXECUTION POLICY:
 ```
-
-### **Create an SNS Topic**
-1. Open the AWS Management Console.
-2. Navigate to the SNS service.
-3. Click Create Topic and select Standard as the topic type.
-4. Name the topic (e.g., gd_topic) and note the ARN.
-5. Click Create Topic.
-
-### **Add Subscriptions to the SNS Topic**
-1. After creating the topic, click on the topic name from the list.
-2. Navigate to the Subscriptions tab and click Create subscription.
-3. Select a Protocol:
-- For Email:
-  - Choose Email.
-  - Enter a valid email address.
-- For SMS (phone number):
-  - Choose SMS.
-  - Enter a valid phone number in international format (e.g., +1234567890).
-
-4. Click Create Subscription.
-5. If you added an Email subscription:
-- Check the inbox of the provided email address.
-- Confirm the subscription by clicking the confirmation link in the email.
-6. For SMS, the subscription will be immediately active after creation.
-
-### **Create the SNS Publish Policy**
-1. Open the IAM service in the AWS Management Console.
-2. Navigate to Policies → Create Policy.
-3. Click JSON and paste the JSON policy from gd_sns_policy.json file
-4. Replace REGION and ACCOUNT_ID with your AWS region and account ID.
-5. Click Next: Tags (you can skip adding tags).
-6. Click Next: Review.
-7. Enter a name for the policy (e.g., gd_sns_policy).
-8. Review and click Create Policy.
-
-### **Create an IAM Role for Lambda**
-1. Open the IAM service in the AWS Management Console.
-2. Click Roles → Create Role.
-3. Select AWS Service and choose Lambda.
-4. Attach the following policies:
-- SNS Publish Policy (gd_sns_policy) (created in the previous step).
-- Lambda Basic Execution Role (AWSLambdaBasicExecutionRole) (an AWS managed policy).
-5. Click Next: Tags (you can skip adding tags).
-6. Click Next: Review.
-7. Enter a name for the role (e.g., gd_role).
-8. Review and click Create Role.
-9. Copy and save the ARN of the role for use in the Lambda function.
-
-### **Deploy the Lambda Function**
-1. Open the AWS Management Console and navigate to the Lambda service.
-2. Click Create Function.
-3. Select Author from Scratch.
-4. Enter a function name (e.g., gd_notifications).
-5. Choose Python 3.x as the runtime.
-6. Assign the IAM role created earlier (gd_role) to the function.
-7. Under the Function Code section:
-- Copy the content of the src/gd_notifications.py file from the repository.
-- Paste it into the inline code editor.
-8. Under the Environment Variables section, add the following:
-- NBA_API_KEY: your NBA API key.
-- SNS_TOPIC_ARN: the ARN of the SNS topic created earlier.
-9. Click Create Function.
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+![Image](https://github.com/user-attachments/assets/dea62d17-0ff4-42ef-932e-91e2ec93cb8c)
+I attached this role to my Lambda function, enabling it to publish to my SNS topic.
 
 
-### **Set Up Automation with Eventbridge**
-1. Navigate to the Eventbridge service in the AWS Management Console.
-2. Go to Rules → Create Rule.
-3. Select Event Source: Schedule.
-4. Set the cron schedule for when you want updates (e.g., hourly).
-5. Under Targets, select the Lambda function (gd_notifications) and save the rule.
+## **Lambda function and Event bridge**
 
+This Lambda function fetched NBA game data for the current date (adjusted to Eastern Time) from the SportsData API, formatted the data (based on game status: Final, InProgress, or Scheduled), and published a summary of the games to an Amazon SNS topic for distribution to the subscribed phone numbers and emails. Variables like API keys and the SNS topic ARN were stored as environment variables for security.
+```
+import os
+import json
+import urllib.request
+import boto3
+from datetime import datetime, timedelta, timezone
 
-### **Test the System**
-1. Open the Lambda function in the AWS Management Console.
-2. Create a test event to simulate execution.
-3. Run the function and check CloudWatch Logs for errors.
-4. Verify that SMS notifications are sent to the subscribed users.
+def format_game_data(game):
+    status = game.get("Status", "Unknown")
+    away_team = game.get("AwayTeam", "Unknown")
+    home_team = game.get("HomeTeam", "Unknown")
+    final_score = f"{game.get('AwayTeamScore', 'N/A')}-{game.get('HomeTeamScore', 'N/A')}"
+    start_time = game.get("DateTime", "Unknown")
+    channel = game.get("Channel", "Unknown")
+    
+    # Format quarters
+    quarters = game.get("Quarters", [])
+    quarter_scores = ', '.join([f"Q{q['Number']}: {q.get('AwayScore', 'N/A')}-{q.get('HomeScore', 'N/A')}" for q in quarters])
+    
+    if status == "Final":
+        return (
+            f"Game Status: {status}\n"
+            f"{away_team} vs {home_team}\n"
+            f"Final Score: {final_score}\n"
+            f"Start Time: {start_time}\n"
+            f"Channel: {channel}\n"
+            f"Quarter Scores: {quarter_scores}\n"
+        )
+    elif status == "InProgress":
+        last_play = game.get("LastPlay", "N/A")
+        return (
+            f"Game Status: {status}\n"
+            f"{away_team} vs {home_team}\n"
+            f"Current Score: {final_score}\n"
+            f"Last Play: {last_play}\n"
+            f"Channel: {channel}\n"
+        )
+    elif status == "Scheduled":
+        return (
+            f"Game Status: {status}\n"
+            f"{away_team} vs {home_team}\n"
+            f"Start Time: {start_time}\n"
+            f"Channel: {channel}\n"
+        )
+    else:
+        return (
+            f"Game Status: {status}\n"
+            f"{away_team} vs {home_team}\n"
+            f"Details are unavailable at the moment.\n"
+        )
 
+def lambda_handler(event, context):
+    # Get environment variables
+    api_key = os.getenv("NBA_API_KEY")
+    sns_topic_arn = os.getenv("SNS_TOPIC_ARN")
+    sns_client = boto3.client("sns")
+    
+    # Adjust for Eastern Standard Time (UTC-5)
+    utc_now = datetime.now(timezone.utc)
+    eastern_time = utc_now - timedelta(hours=5)  # Eastern Time is UTC-5
+    today_date = eastern_time.strftime("%Y-%m-%d")
+    
+    print(f"Fetching games for date: {today_date}")
+    
+    # Fetch data from the API
+    api_url = f"https://api.sportsdata.io/v3/nba/scores/json/GamesByDate/{today_date}?key={api_key}"
+    print(today_date)
+     
+    try:
+        with urllib.request.urlopen(api_url) as response:
+            data = json.loads(response.read().decode())
+            print(json.dumps(data, indent=4))  # Debugging: log the raw data
+    except Exception as e:
+        print(f"Error fetching data from API: {e}")
+        return {"statusCode": 500, "body": "Error fetching data"}
+    
+    # Include all games (final, in-progress, and scheduled)
+    messages = [format_game_data(game) for game in data]
+    final_message = "\n---\n".join(messages) if messages else "No games available for today."
+    
+    # Publish to SNS
+    try:
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Message=final_message,
+            Subject="NBA Game Updates"
+        )
+        print("Message published to SNS successfully.")
+    except Exception as e:
+        print(f"Error publishing to SNS: {e}")
+        return {"statusCode": 500, "body": "Error publishing to SNS"}
+    
+    return {"statusCode": 200, "body": "Data processed and sent to SNS"}
+```
+I tested my Lambda function, and it was successful; I received an email with the results of concluded NBA games and scheduled ones.
 
-### **What We Learned**
-1. Designing a notification system with AWS SNS and Lambda.
-2. Securing AWS services with least privilege IAM policies.
-3. Automating workflows using EventBridge.
-4. Integrating external APIs into cloud-based workflows.
+![Image](https://github.com/user-attachments/assets/cb6b20b9-0cb9-4501-9b63-18e04650deba)
 
+Finally, I created a recurring EventBridge schedule to trigger my Lambda function every 2 hours from 9 AM to 2 AM.
+![Image](https://github.com/user-attachments/assets/936d37d9-619c-43e9-90e4-96e8fc18f576)
+## **Conclusion**
+This project successfully demonstrated the implementation of a robust and scalable event-driven notification system using AWS services such as Lambda, SNS, and EventBridge. By integrating external APIs, I was able to deliver real-time updates in an efficient and automated manner. This architecture highlights the power of serverless computing in building cost-effective and highly available solutions. It serves as a foundational framework for future enhancements, such as extending the notification system to include additional sports or more advanced analytics.
+## API Reference
 
-### **Future Enhancements**
-1. Add NFL score alerts for extended functionality.
-2. Store user preferences (teams, game types) in DynamoDB for personalized alerts.
-3. Implement a web UI
+sportsdata.io
+
